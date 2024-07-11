@@ -1,0 +1,1531 @@
+# Load the necessary R packages
+library(shiny)
+library(shinydashboard)
+library(ggplot2)
+library(dplyr)
+library(readxl)
+library(ggpubr)
+
+# Import the data from Excel to be worked with
+# Make sure that your copy of the Excel data is in your current 
+# working directory before running the code. To see your
+# current working directory, use getwd(), and to update your
+# working directory, use setwd().
+pitch <- read_excel("~/PitchByPitchUpdate (1).xlsx",
+                    col_types = c("guess", "text", "guess", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess", "guess", "guess", "guess", 
+                                  "text", "guess", "text", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess", "guess", "guess", "guess", 
+                                  "text", "text", "text", "guess"))
+
+# This generates the header in the top left
+header <- dashboardHeader(title = "Interactive Shiny Apps")
+
+# This generates the sidebar on the left. I want there to be 5 tabs,
+# and when the user clicks on one of them, the plot in the 
+# body changes.
+sidebar <- dashboardSidebar(
+  sidebarMenu(
+    menuItem("Pitch Tendencies", tabName = "PitchTendencies"),
+    menuItem("Pitch Sequences", tabName = "PitchSequences"),
+    menuItem("Sequences With Outcomes", tabName = "SequencesWithOutcomes"),
+    menuItem("Base Running/Score Differential", tabName = "baseRunningScore"),
+    menuItem("Pitching Fatigue", tabName = "pitchFatigue")
+  )
+)
+
+# This generates the main panel of the dashboard. It consists
+# of inputs, which allow the user to determine what 
+# visualizations they would like to see, and outputs, which
+# are the graphs themselves.
+body <- dashboardBody(
+  tabItems(
+    # This creates PitchTendencies, the first tab of the dashboard
+    tabItem(tabName = "PitchTendencies",
+            fluidRow(
+              # This is the "Inputs" box in between the sidebar and 
+              # the "Graphs" box
+              box(collapsible = TRUE, width = 2, height = NULL, title = "Inputs", status = "warning",
+                  # Creates the dropdown to choose which pitcher you
+                  # want to see data for
+                  selectInput(inputId = "Pitcher",
+                              label = "Pitcher:",
+                              choices = c("Brock", "Burhenn", "G. Smith", 
+                                          "Gahm", "Hammerberg", "Loncar", 
+                                          "Lonsway", "Magno", "Milheim", 
+                                          "Murphy", "Pfennig", "Root",
+                                          "Smith", "Vance", "Waning"),
+                              selected = "Lonsway"),
+                  # Dropdown to choose count TYPE - choose as many as you want
+                  checkboxGroupInput(inputId = "Count2",
+                                     label = "Simple Count",
+                                     choices = c("Even", "Up", "Down", "All", "None"),
+                                     inline = TRUE),
+                  # Dropdown to manually choose count - choose as many as you want
+                  checkboxGroupInput(inputId = "Count",
+                                     label = "Count",
+                                     choices = c("0-0", "0-1", "0-2",
+                                                 "1-0", "1-1", "1-2", 
+                                                 "2-0", "2-1", "2-2",
+                                                 "3-0", "3-1", "3-2"),
+                                     selected = "0-0")),
+              # This is the "Graphs" box to the right of the
+              # "Inputs" box
+              box(collapsible = TRUE, width = 10, height = NULL, title = "Graphs", status = "primary",
+                  # Creates the top graph showing the tendencies
+                  tabItem(tabName = "PitchTendencies", value = 1,
+                          fluidRow(
+                            plotOutput("pitchTendenciesPlot", click = "bar_click")
+                          )),
+                  # If a bar is clicked in the top graph, this generates
+                  # a distribution of the resulting outcomes for the
+                  # selected pitch
+                  tabItem(tabName = "SelectedTendencies", value = 1,
+                          fluidRow(
+                            plotOutput("selectedTendencies")
+                          )))
+            )),
+    
+    # This creates PitchSequences, the second tab of the dashboard
+    tabItem(tabName = "PitchSequences",
+            fluidRow(
+              box(collapsible = TRUE, width = 2, height = NULL, title = "Inputs", status = "warning",
+                  selectInput(inputId = "Pitcher2",
+                              label = "Pitcher:",
+                              choices = c("Brock", "Burhenn", "G. Smith", 
+                                          "Gahm", "Hammerberg", "Loncar", 
+                                          "Lonsway", "Magno", "Milheim", 
+                                          "Murphy", "Pfennig", "Root",
+                                          "Smith", "Vance", "Waning"),
+                              selected = "Lonsway"),
+                  selectInput(inputId = "Pitch1",
+                              label = "Pitch 1:",
+                              choices = c("Fastball" = 1, 
+                                          "Curveball" = 2,
+                                          "Slider" = 3, 
+                                          "Changeup" = 4),
+                              selected = "Fastball")),
+              
+              box(collapsible = TRUE, width = 10, height = NULL, title = "Graphs",
+                  tabItem(tabName = "PitchSequences", value = 1,
+                          fluidRow(
+                            plotOutput("pitchSequencesPlot")
+                          )))
+            )),
+    
+    # This creates SequencesWithOutcomes, the third tab of the dashboard
+    tabItem(tabName = "SequencesWithOutcomes",
+            fluidRow(
+              box(collapsible = TRUE, width = 2, height = NULL, title = "Inputs", status = "primary",
+                  selectInput(inputId = "Pitcher3",
+                              label = "Pitcher:",
+                              choices = c("All Pitchers", "Brock", "Burhenn", "G. Smith", 
+                                          "Gahm", "Hammerberg", "Loncar", 
+                                          "Lonsway", "Magno", "Milheim", 
+                                          "Murphy", "Pfennig", "Root",
+                                          "Smith", "Vance", "Waning"),
+                              selected = "All Pitchers"),
+                  selectInput(inputId = "Pitch1b",
+                              label = "Pitch 1:",
+                              choices = c("Fastball" = 1, 
+                                          "Curveball" = 2,
+                                          "Slider" = 3, 
+                                          "Changeup" = 4),
+                              selected = "Fastball")),
+              box(collapsible = TRUE, width = 10, height = NULL, title = "Graphs",
+                  tabItem(tabName = "SequencesWithOutcomes", value = 1,
+                          fluidRow(
+                            plotOutput("sequencesWithOutcomesPlot")
+                          )),
+                  tabItem(tabName = "SequencesWithOutcomes", value = 1,
+                          fluidRow(
+                            plotOutput("sequencesWithOutcomesPlot2")
+                          )))
+            )
+    ),
+    
+    # This creates Base Running/Score Differential,
+    # the fourth tab of the dashboard
+    tabItem(tabName = "baseRunningScore",
+            fluidRow(
+              box(collapsible = TRUE, width = 2, height = NULL, title = "Inputs", status = "warning",
+                  selectInput(inputId = "Pitcher4",
+                              label = "Pitcher:",
+                              choices = c("All Pitchers", "Brock", "Burhenn", "G. Smith", 
+                                          "Gahm", "Hammerberg", "Loncar", 
+                                          "Lonsway", "Magno", "Milheim", 
+                                          "Murphy", "Pfennig", "Root",
+                                          "Smith", "Vance", "Waning"),
+                              selected = "All Pitchers"),
+                  # Choosing Situation - choose as many as you want
+                  checkboxGroupInput(inputId = "Base",
+                                     label = "Bases Scenario",
+                                     choices = c("Runner on First", "Runner on Second", "Runner on Third"), 
+                                     inline = TRUE),
+                  # Choosing type of score - choose as many as you want
+                  checkboxGroupInput(inputId = "Score2",
+                                     label = "Simple Score Differential",
+                                     choices = c("Losing", "close", "Winning", "All", "None"),
+                                     inline = TRUE),
+                  # Choosing score manually - choose as many as you want
+                  checkboxGroupInput(inputId = "Score",
+                                     label = "Score Differential",
+                                     choices = c("<-5", "-4", "-3",
+                                                 "-2", "-1", "0", 
+                                                 "+1", "+2", "+3",
+                                                 "+4", ">+5"),
+                                     selected = c("<-5", "-4", "-3",
+                                                  "-2", "-1", "0", 
+                                                  "+1", "+2", "+3",
+                                                  "+4", ">+5"))),
+              
+              tabBox(width = 10, height = NULL, title = "Graphs",
+                     # Creates the left tab within "Graphs",
+                     # named Total Comparison
+                     tabPanel(title = "Total Comparison",
+                              fluidRow(
+                                plotOutput("comparePlot"),
+                                plotOutput("basePlot1")
+                              )),
+                     # Creates the right tab within "Graphs",
+                     # named Situational Outcomes
+                     tabPanel(title = "Situational Outcomes",
+                              fluidRow(
+                                plotOutput("basePlot", click = "bar1_click"),
+                                plotOutput("selected_rows")
+                              )))
+            )
+    ),
+    
+    #This creates Pitching Fatigue, the fifth tab of the dashboard
+    tabItem(tabName = "pitchFatigue",
+            fluidRow(
+              box(collapsible = TRUE, width = 2, height = NULL, title = "Inputs", status = "warning",
+                  selectInput(inputId = "Pitcher5",
+                              label = "Pitcher:",
+                              choices = c("Brock", "Burhenn", "G. Smith", 
+                                          "Gahm", "Hammerberg", "Loncar", 
+                                          "Lonsway", "Magno", "Milheim", 
+                                          "Murphy", "Pfennig", "Root",
+                                          "Smith", "Vance", "Waning"),
+                              selected = "Lonsway"),
+                  selectInput(inputId = "Pitch1c",
+                              label = "Pitch 1:",
+                              choices = c("Fastball" = 1, 
+                                          "Curveball" = 2,
+                                          "Slider" = 3, 
+                                          "Changeup" = 4),
+                              selected = "Fastball"),
+                  textOutput("output1"),
+                  infoBoxOutput("infoBox")),
+              
+              box(collapsible = TRUE, width = 10, height = NULL, title = "Graphs", status = "primary",
+                  tabItem(tabName = "pitchFatigue", value = 1,
+                          fluidRow(
+                            plotOutput("pitchFatiguePlot")
+                          )))
+              
+            ))
+    
+  ))
+
+
+# The ui function brings together the code within the header, 
+# sidebar and body functions used above
+ui <- dashboardPage(header, sidebar, body)
+
+# The server function consists of the code that actually
+# makes the customized output once the app is run. The 
+# server function "hears" the input from the user, causing 
+# the code below to execute and bring up the desired output.
+server <- function(input, output, session) {
+  
+  observe({
+    select = c()
+    if("Even" %in% input$Count2){
+      chosen = c("0-0", "1-1", "2-2")
+      select = c(select, chosen)
+      updateCheckboxGroupInput(session, "Count",
+                               choices = c("0-0", "0-1", "0-2",
+                                           "1-0", "1-1", "1-2", 
+                                           "2-0", "2-1", "2-2",
+                                           "3-0", "3-1", "3-2"),
+                               selected = select)
+    }
+    if("Up" %in% input$Count2){
+      chosen = c("0-1", "0-2", "1-2")
+      select = c(select, chosen)
+      updateCheckboxGroupInput(session, "Count",
+                               choices = c("0-0", "0-1", "0-2",
+                                           "1-0", "1-1", "1-2", 
+                                           "2-0", "2-1", "2-2",
+                                           "3-0", "3-1", "3-2"),
+                               selected = select)
+    }
+    if("Down" %in% input$Count2){
+      chosen = c("1-0", "2-0", "2-1", "3-0", "3-1", "3-2")
+      select = c(select, chosen)
+      updateCheckboxGroupInput(session, "Count",
+                               choices = c("0-0", "0-1", "0-2",
+                                           "1-0", "1-1", "1-2", 
+                                           "2-0", "2-1", "2-2",
+                                           "3-0", "3-1", "3-2"),
+                               selected = select)
+    }
+    if("All" %in% input$Count2){
+      updateCheckboxGroupInput(session, "Count",
+                               choices = c("0-0", "0-1", "0-2",
+                                           "1-0", "1-1", "1-2", 
+                                           "2-0", "2-1", "2-2",
+                                           "3-0", "3-1", "3-2"),
+                               selected = c("0-0", "0-1", "0-2",
+                                            "1-0", "1-1", "1-2", 
+                                            "2-0", "2-1", "2-2",
+                                            "3-0", "3-1", "3-2"))
+    }
+    if("None" %in% input$Count2){
+      updateCheckboxGroupInput(session, "Count",
+                               choices = c("0-0", "0-1", "0-2",
+                                           "1-0", "1-1", "1-2", 
+                                           "2-0", "2-1", "2-2",
+                                           "3-0", "3-1", "3-2"))
+    }
+    
+  })
+  
+  # This creates the first plot in the Pitch Tendencies tab
+  output$pitchTendenciesPlot <- renderPlot({
+    # Take the pitcher that was chosen
+    thisPitcher <- input$Pitcher
+    count_0_0 <- 1
+    count_0_1 <- 1
+    count_0_2 <- 1
+    count_1_0 <- 1
+    count_1_1 <- 1
+    count_1_2 <- 1
+    count_2_0 <- 1
+    count_2_1 <- 1
+    count_2_2 <- 1
+    count_3_0 <- 1
+    count_3_1 <- 1
+    count_3_2 <- 1
+    
+    selected <- 0
+    
+    # Make a note of each count that gets selected so that
+    # we can filter the data to see only those specific counts
+    if("0-0" %in% input$Count){
+      count_0_0 <- "0-0"
+      selected <- selected + 1
+    }
+    if("0-1" %in% input$Count){
+      count_0_1 <- "0-1"
+      selected <- selected + 1
+    }
+    if("0-2" %in% input$Count){
+      count_0_2 <- "0-2"
+      selected <- selected + 1
+    }
+    if("1-0" %in% input$Count){
+      count_1_0 <- "1-0"
+      selected <- selected + 1
+    }
+    if("1-1" %in% input$Count){
+      count_1_1 <- "1-1"
+      selected <- selected + 1
+    }
+    if("1-2" %in% input$Count){
+      count_1_2 <- "1-2"
+      selected <- selected + 1
+    }
+    if("2-0" %in% input$Count){
+      count_2_0 <- "2-0"
+      selected <- selected + 1
+    }
+    if("2-1" %in% input$Count){
+      count_2_1 <- "2-1"
+      selected <- selected + 1
+    }
+    if("2-2" %in% input$Count){
+      count_2_2 <- "2-2"
+      selected <- selected + 1
+    }
+    if("3-0" %in% input$Count){
+      count_3_0 <- "3-0"
+      selected <- selected + 1
+    }
+    if("3-1" %in% input$Count){
+      count_3_1 <- "3-1"
+      selected <- selected + 1
+    }
+    if("3-2" %in% input$Count){
+      count_3_2 <- "3-2"
+      selected <- selected + 1
+    }
+    
+    
+    # Work with only the relevant variables from the Excel data
+    pitch_clean <- pitch %>%
+      select(inning, balls, strikes, Pitch_Type, pitcher) %>%
+      mutate(count = paste(balls, "-", strikes, 
+                           sep = "")) %>% 
+      mutate(pitch_type = as.character(Pitch_Type)) %>%
+      select(-Pitch_Type)
+    
+    # Filter the data so that you only see info from the 
+    # pitcher and the counts chosen by the user
+    data <- filter(pitch_clean, pitcher == thisPitcher,  
+                     count == count_0_0 | count == count_0_1 |
+                     count == count_0_2 | count == count_1_0 |
+                     count == count_1_1 | count == count_1_2 | 
+                     count == count_2_0 | count == count_2_1 |
+                     count == count_2_2 | count == count_3_0 |
+                     count == count_3_1 | count == count_3_2) %>%
+      group_by(pitch_type) %>%
+      count(count) %>%
+      filter(!is.na(pitch_type))
+    
+    data_temp <- data
+    
+    # get the column names to be pitch names
+    for(i in 1:length(data_temp$pitch_type)){
+      if(data$pitch_type[i] == 1){
+        data_temp$pitch_type[i] = "Fastball"
+      }
+      else if(data$pitch_type[i] == 2){
+        data_temp$pitch_type[i] = "Curveball"
+      }
+      else if(data$pitch_type[i] == 3){
+        data_temp$pitch_type[i] = "Slider"
+      }
+      else if(data$pitch_type[i] == 4){
+        data_temp$pitch_type[i] = "Changeup"
+      }
+    }
+    
+    # Plot the resulting data 
+    ggplot(data_temp, aes(x = pitch_type, y = n, fill = count)) + 
+      geom_col() + 
+      geom_text(aes(label = n), size = 3,
+                position = position_stack(vjust = .5)) +
+      labs(x = "Pitch Type", y = "Number", title = paste(thisPitcher, "'s Pitch Tendencies by Count")) 
+  })
+  
+  # This creates the second (bottom) plot in the Pitch Tendencies
+  # tab. This plot is generated by clicking on a bar in the top 
+  # plot
+  output$selectedTendencies <- renderPlot({
+    thisPitcher <- input$Pitcher
+    count_0_0 <- 1
+    count_0_1 <- 1
+    count_0_2 <- 1
+    count_1_0 <- 1
+    count_1_1 <- 1
+    count_1_2 <- 1
+    count_2_0 <- 1
+    count_2_1 <- 1
+    count_2_2 <- 1
+    count_3_0 <- 1
+    count_3_1 <- 1
+    count_3_2 <- 1
+    
+    selected <- 0
+    
+    if("0-0" %in% input$Count){
+      count_0_0 <- "0-0"
+      selected <- selected + 1
+    }
+    if("0-1" %in% input$Count){
+      count_0_1 <- "0-1"
+      selected <- selected + 1
+    }
+    if("0-2" %in% input$Count){
+      count_0_2 <- "0-2"
+      selected <- selected + 1
+    }
+    if("1-0" %in% input$Count){
+      count_1_0 <- "1-0"
+      selected <- selected + 1
+    }
+    if("1-1" %in% input$Count){
+      count_1_1 <- "1-1"
+      selected <- selected + 1
+    }
+    if("1-2" %in% input$Count){
+      count_1_2 <- "1-2"
+      selected <- selected + 1
+    }
+    if("2-0" %in% input$Count){
+      count_2_0 <- "2-0"
+      selected <- selected + 1
+    }
+    if("2-1" %in% input$Count){
+      count_2_1 <- "2-1"
+      selected <- selected + 1
+    }
+    if("2-2" %in% input$Count){
+      count_2_2 <- "2-2"
+      selected <- selected + 1
+    }
+    if("3-0" %in% input$Count){
+      count_3_0 <- "3-0"
+      selected <- selected + 1
+    }
+    if("3-1" %in% input$Count){
+      count_3_1 <- "3-1"
+      selected <- selected + 1
+    }
+    if("3-2" %in% input$Count){
+      count_3_2 <- "3-2"
+      selected <- selected + 1
+    }
+    
+    if (is.null(input$bar_click$x)) return(ggplot() + theme_void() + ggtitle("Click Bar Above for Distribution of Outcomes"))
+    else {
+      click1 <- as.character(round(input$bar_click$x))
+      pitch_clean <- pitch %>%
+        select(inning, balls, strikes, Pitch_Type, pitcher, Simple_Outcomes) %>%
+        mutate(count = paste(balls, "-", strikes, 
+                             sep = "")) %>% 
+        mutate(pitch_type = as.character(Pitch_Type)) %>%
+        select(-Pitch_Type)
+      
+      data <- filter(pitch_clean, pitcher == thisPitcher, pitch_type == click1, 
+                     count == count_0_0 | count == count_0_1 |
+                       count == count_0_2 | count == count_1_0 |
+                       count == count_1_1 | count == count_1_2 | 
+                       count == count_2_0 | count == count_2_1 |
+                       count == count_2_2 | count == count_3_0 |
+                       count == count_3_1 | count == count_3_2) %>%
+        group_by(Simple_Outcomes) %>%
+        count(Simple_Outcomes)
+      
+      ggplot(data, aes(x = Simple_Outcomes, y = n, fill = Simple_Outcomes)) + 
+        geom_bar(stat = "identity") + 
+        geom_text(aes(label = n), size = 3,
+                  position = position_stack(vjust = .5))
+    }
+    
+  })
+  
+  # This creates the plot in the Pitch Sequences tab
+  output$pitchSequencesPlot <- renderPlot({
+    
+    # Take the pitcher that was chosen by the user
+    thisPitcher <- input$Pitcher2
+    # Filter the data to see observations for only the chosen
+    # pitcher, as well as each pitch type that is thrown and 
+    # the pitch immediately before that
+    df <- pitch %>% 
+      filter(pitcher == thisPitcher) %>%
+      select(pitcher, Pitch_Type, Prior_Pitch_Type)
+    
+    fastball <- 0
+    curveball <- 0
+    slider <- 0
+    changeup <- 0
+    
+    # We need to get rid of all observations that could be a 
+    # problem for us. This includes the first pitch in every 
+    # at-bat (which means there's no previous pitch within the same
+    # at-bat) as well as any data entry errors that may have occurred
+    for(i in 2:length(df$pitcher)){
+      # checking for NAs
+      if((is.na(df$Prior_Pitch_Type[i]) == FALSE) && 
+         (is.na(df$Pitch_Type[i]) == FALSE)){
+        # if the previous pitch was the one chosen
+        if(df$Pitch_Type[i-1] == input$Pitch1) {
+          # all second pitches that are fastballs
+          if(df$Pitch_Type[i] == 1) {
+            fastball <- fastball + 1
+          }
+          # all second pitches which are curveballs
+          if(df$Pitch_Type[i] == 2) {
+            curveball <- curveball + 1
+          }
+          # all second pitches which are sliders 
+          if(df$Pitch_Type[i] == 3) {
+            slider <- slider + 1
+          }
+          # all second pitches which are changeups
+          if(df$Pitch_Type[i] == 4) {
+            changeup <- changeup + 1
+          }
+        }
+      }
+    }
+    sequencing <- data.frame("Pitch" = c("Fastball",
+            "Curveball", "Slider", "Changeup"),
+            "Counts" = c(fastball, curveball, slider, changeup))
+    
+    # Plot the resulting data
+    ggplot(sequencing, aes(x = Pitch, y = Counts, fill = Pitch)) + 
+      scale_x_discrete(limits = c("Fastball", "Curveball", 
+                                  "Slider", "Changeup")) +
+      geom_col() + 
+      geom_text(aes(label = Counts), position = position_stack(vjust = 0.5), size = 3) + 
+      theme(legend.position = "none") +
+      labs(x = "Pitch Type", y = "Number", 
+                title = paste("Distribution of pitches thrown after a", 
+                         if(input$Pitch1 == 1){"fastball"},
+                         if(input$Pitch1 == 2){"curveball"},
+                         if(input$Pitch1 == 3){"slider"},
+                         if(input$Pitch1 == 4){"changeup"}), sep = "")
+    
+  })
+  
+  # This creates the top two pie charts in the Sequences With 
+  # Outcomes tab
+  output$sequencesWithOutcomesPlot <- renderPlot({
+    
+    thisPitcher <- input$Pitcher3
+    
+    # sequence1 is a data frame that holds data for when the
+    # second pitch in a 2-pitch sequence is a fastball
+    # If all pitchers are selected, don't filter for a specific 
+    # pitcher
+    if(thisPitcher == "All Pitchers"){
+      sequence1 <- pitch %>% 
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 1)
+      # Otherwise, filter for the pitcher that was chosen
+    }else{
+      sequence1 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 1)
+    }
+    # If there is no fastball data for a given pitcher, substitute
+    # a blank plot to ensure that we don't get an error
+    if(length(sequence1$n) == 0){
+      df <- data.frame()
+      secondPitchFastball <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      # Otherwise, generate a pie chart from the data that 
+      # we have 
+      secondPitchFastball <- ggplot(sequence1, aes(x="", y = sequence1$n, 
+                                                   fill = sequence1$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence1$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 1"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    # Repeat the above process for sequence2, a data frame that 
+    # holds data for when the second pitch in a 2-pitch sequence 
+    # is a curveball
+    if(thisPitcher == "All Pitchers"){
+      sequence2 <- pitch %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 2)
+    }else{
+      sequence2 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 2)
+    }
+    
+    if(length(sequence2$n) == 0){
+      df <- data.frame()
+      secondPitchCurveball <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchCurveball <- ggplot(sequence2, aes(x="", y = sequence2$n, 
+                                                    fill = sequence2$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence2$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 2"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    # Repeat the above process for sequence3, a data frame that 
+    # holds data for when the second pitch in a 2-pitch sequence 
+    # is a slider
+    if(thisPitcher == "All Pitchers"){
+      sequence3 <- pitch %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 3)
+    }else{
+      sequence3 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 3)
+    }
+    
+    if(length(sequence3$n) == 0){
+      df <- data.frame()
+      secondPitchSlider <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchSlider <- ggplot(sequence3, aes(x="", y = sequence3$n, 
+                                                 fill = sequence3$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence3$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 3"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    # Repeat the above process for sequence4, a data frame that 
+    # holds data for when the second pitch in a 2-pitch sequence 
+    # is a changeup
+    if(thisPitcher == "All Pitchers"){
+      sequence4 <- pitch %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 4)
+    }else{
+      sequence4 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 4)
+    }
+    
+    if(length(sequence4$n) == 0){
+      df <- data.frame()
+      secondPitchChangeup <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchChangeup <- ggplot(sequence4, aes(x="", y = sequence4$n, 
+                                                   fill = sequence4$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence4$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 4"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    # Now, arrange the first two pie charts created above on the 
+    # same plot
+    ggarrange(secondPitchFastball, secondPitchCurveball, 
+              ncol = 2, nrow = 1)
+    
+  })
+  
+  # This creates the bottom two pie charts in the Sequences 
+  # With Outcomes tab. All code is the same as the previous 
+  # plot
+  output$sequencesWithOutcomesPlot2 <- renderPlot({
+    
+    thisPitcher <- input$Pitcher3
+    
+    if(thisPitcher == "All Pitchers"){
+      sequence1 <- pitch %>% 
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 1)
+    }else{
+      sequence1 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 1)
+    }
+    
+    if(length(sequence1$n) == 0){
+      df <- data.frame()
+      secondPitchFastball <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchFastball <- ggplot(sequence1, aes(x="", y = sequence1$n, 
+                                                   fill = sequence1$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence1$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 1"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    if(thisPitcher == "All Pitchers"){
+      sequence2 <- pitch %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 2)
+    }else{
+      sequence2 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 2)
+    }
+    
+    if(length(sequence2$n) == 0){
+      df <- data.frame()
+      secondPitchCurveball <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchCurveball <- ggplot(sequence2, aes(x="", y = sequence2$n, 
+                                                    fill = sequence2$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence2$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 2"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    if(thisPitcher == "All Pitchers"){
+      sequence3 <- pitch %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 3)
+    }else{
+      sequence3 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 3)
+    }
+    
+    
+    if(length(sequence3$n) == 0){
+      df <- data.frame()
+      secondPitchSlider <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchSlider <- ggplot(sequence3, aes(x="", y = sequence3$n, 
+                                                 fill = sequence3$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence3$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 3"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    if(thisPitcher == "All Pitchers"){
+      sequence4 <- pitch %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 4)
+    }else{
+      sequence4 <- pitch %>% 
+        filter(pitcher == input$Pitcher3) %>%
+        select(pitcher, Pitch_Type, Prior_Pitch_Type, Simple_Outcomes) %>%
+        filter(Prior_Pitch_Type == input$Pitch1b) %>%
+        group_by(Pitch_Type, Simple_Outcomes) %>%
+        count(Simple_Outcomes) %>%
+        filter(Pitch_Type == 4)
+    }
+    
+    
+    if(length(sequence4$n) == 0){
+      df <- data.frame()
+      secondPitchChangeup <- ggplot(df) + geom_point() + 
+        xlim(0, 10) + ylim(0, 100)
+    }
+    else{
+      secondPitchChangeup <- ggplot(sequence4, aes(x="", y = sequence4$n, 
+                                                   fill = sequence4$Simple_Outcomes)) +
+        geom_bar(width = 1, stat = "identity") +
+        geom_text(label = sequence4$n, position = position_stack(vjust = 0.5), size = 3) +
+        coord_polar("y", start = 0) + 
+        labs(title = paste("Distribution when", thisPitcher, " throws ", input$Pitch1b,
+                           "- 4"), x = "") + 
+        scale_fill_discrete("Outcomes") + theme_void()
+    }
+    
+    # Now, arrange the second two pie charts created above on the 
+    # same plot
+    ggarrange(secondPitchSlider, secondPitchChangeup, 
+              ncol = 2, nrow = 1)
+    
+  })
+  
+  observe({
+    select = c()
+    if("Losing" %in% input$Score2){
+      chosen = c("<-5", "-4", "-3",
+                 "-2", "-1")
+      select = c(select, chosen)
+      updateCheckboxGroupInput(session, "Score",
+                               choices = c("<-5", "-4", "-3",
+                                           "-2", "-1", "0", 
+                                           "+1", "+2", "+3",
+                                           "+4", ">+5"),
+                               selected = select)
+    }
+    if("Close" %in% input$Score2){
+      chosen = c("0", "-1", "+1")
+      select = c(select, chosen)
+      updateCheckboxGroupInput(session, "Score",
+                               choices = c("<-5", "-4", "-3",
+                                           "-2", "-1", "0", 
+                                           "+1", "+2", "+3",
+                                           "+4", ">+5"),
+                               selected = select)
+    }
+    if("Winning" %in% input$Score2){
+      chosen = c(">+5", "+4", "+3",
+                 "+2", "+1")
+      select = c(select, chosen)
+      updateCheckboxGroupInput(session, "Score",
+                               choices = c("<-5", "-4", "-3",
+                                           "-2", "-1", "0", 
+                                           "+1", "+2", "+3",
+                                           "+4", ">+5"),
+                               selected = select)
+    }
+    if("All" %in% input$Score2){
+      updateCheckboxGroupInput(session, "Score",
+                               choices = c("<-5", "-4", "-3",
+                                           "-2", "-1", "0", 
+                                           "+1", "+2", "+3",
+                                           "+4", ">+5"),
+                               selected = c("<-5", "-4", "-3",
+                                            "-2", "-1", "0", 
+                                            "+1", "+2", "+3",
+                                            "+4", ">+5"))
+    }
+    if("None" %in% input$Score2){
+      updateCheckboxGroupInput(session, "Score",
+                               choices = c("<-5", "-4", "-3",
+                                           "-2", "-1", "0", 
+                                           "+1", "+2", "+3",
+                                           "+4", ">+5"))
+    }
+    
+  })
+  
+  output$basePlot <- renderPlot({
+    thisPitcher <- input$Pitcher4
+    Runner_First <- 0
+    Runner_Second <- 0
+    Runner_Third <- 0
+    
+    score__5 <- 6
+    score__4 <- 6
+    score__3 <- 6
+    score__2 <- 6
+    score__1 <- 6
+    score_0 <- 6
+    score_1 <- 6
+    score_2 <- 6
+    score_3 <- 6
+    score_4 <- 6
+    score_5 <- 6
+    
+    
+    
+    if("Runner on First" %in% input$Base){
+      Runner_First <- 1
+    }
+    if("Runner on Second" %in% input$Base){
+      Runner_Second <- 1
+    }
+    if("Runner on Third" %in% input$Base){
+      Runner_Third <- 1
+    }
+    
+    if("-5" %in% input$Score){
+      score__5 <- -5
+    }
+    if("-4" %in% input$Score){
+      score__4 <- -4
+    }
+    if("-3" %in% input$Score){
+      score__3 <- -3
+    }
+    if("-2" %in% input$Score){
+      score__2 <- -2
+    }
+    if("-1" %in% input$Score){
+      score__1 <- -1
+    }
+    if("0" %in% input$Score){
+      score_0 <- 0
+    }
+    if("+1" %in% input$Score){
+      score_1 <- 1
+    }
+    if("+2" %in% input$Score){
+      score_2 <- 2
+    }
+    if("+3" %in% input$Score){
+      score_3 <- 3
+    }
+    if("+4" %in% input$Score){
+      score_4 <- 4
+    }
+    if("+5" %in% input$Score){
+      score_5 <- 5
+    }
+    
+    
+    pitch_clean <- pitch %>%
+      select(inning, First, Second, Third, Pitch_Type, pitcher, total_score) %>%
+      mutate(pitch_type = as.character(Pitch_Type)) %>%
+      select(-Pitch_Type)
+    
+    if(thisPitcher == "All Pitchers"){
+      data1 <- filter(pitch_clean,
+                      First == Runner_First & Second == Runner_Second & Third == Runner_Third,
+                      total_score == score__5 | total_score == score__4 |
+                        total_score == score__3 | total_score == score__2 |
+                        total_score == score__1 | total_score == score_0 |
+                        total_score == score_1 | total_score == score_2 |
+                        total_score == score_3 | total_score == score_4 | total_score == score_5) %>%
+        group_by(pitch_type) %>%
+        count(pitch_type) %>%
+        filter(!is.na(pitch_type))
+    } else {
+      data1 <- filter(pitch_clean, pitcher == thisPitcher,
+                      First == Runner_First & Second == Runner_Second & Third == Runner_Third,
+                      total_score == score__5 | total_score == score__4 |
+                        total_score == score__3 | total_score == score__2 |
+                        total_score == score__1 | total_score == score_0 |
+                        total_score == score_1 | total_score == score_2 |
+                        total_score == score_3 | total_score == score_4 | total_score == score_5) %>%
+        group_by(pitch_type) %>%
+        count(pitch_type) %>%
+        filter(!is.na(pitch_type))
+    }
+    
+    
+    
+    if(nrow(data1) < 1){
+      new <- data.frame('pitch_type'='1', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='2', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='3', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='4', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"),]
+    }
+    else if(nrow(data1) < 2){
+      new <- data.frame('pitch_type'='2', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='3', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='4', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"),]
+    }
+    else if(nrow(data1) < 3){
+      if(data1[2,1] == 2){
+        new <- data.frame('pitch_type'='3', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='4', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      } else if (data1[2,1] == 3){
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='4', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      } else {
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='3', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      }
+      
+    }
+    else if(nrow(data1) < 4){
+      if(data1[2,1] == 2){
+        if(data1[3,1] == 3){
+          new <- data.frame('pitch_type'='4', "n" = 0)
+          data1 <- rbind(data1, new)
+          data1[order("pitch_type"),]
+        } else {
+          new <- data.frame('pitch_type'='3', "n" = 0)
+          data1 <- rbind(data1, new)
+          data1[order("pitch_type"), ]
+        }
+      }
+      else if(data1[2,1] == 3){
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      }
+    }
+    data1[order("pitch_type"),]
+    
+    ggplot(data1, aes(x = pitch_type, y = n, fill = pitch_type)) + 
+      geom_bar(stat = "identity") + geom_text(aes(label=n), size = 3,
+                                              position = position_stack(vjust = .5)) + ggtitle("Distribution of Situational Pitch Types") + xlab("Type of Pitch") + ylab("Frequency of Type")
+    
+  })
+  
+  output$basePlot1 <- renderPlot({
+    thisPitcher <- input$Pitcher4
+    Runner_First <- 0
+    Runner_Second <- 0
+    Runner_Third <- 0
+    
+    score__5 <- 6
+    score__4 <- 6
+    score__3 <- 6
+    score__2 <- 6
+    score__1 <- 6
+    score_0 <- 6
+    score_1 <- 6
+    score_2 <- 6
+    score_3 <- 6
+    score_4 <- 6
+    score_5 <- 6
+    
+    
+    
+    if("Runner on First" %in% input$Base){
+      Runner_First <- 1
+    }
+    if("Runner on Second" %in% input$Base){
+      Runner_Second <- 1
+    }
+    if("Runner on Third" %in% input$Base){
+      Runner_Third <- 1
+    }
+    
+    if("-5" %in% input$Score){
+      score__5 <- -5
+    }
+    if("-4" %in% input$Score){
+      score__4 <- -4
+    }
+    if("-3" %in% input$Score){
+      score__3 <- -3
+    }
+    if("-2" %in% input$Score){
+      score__2 <- -2
+    }
+    if("-1" %in% input$Score){
+      score__1 <- -1
+    }
+    if("0" %in% input$Score){
+      score_0 <- 0
+    }
+    if("+1" %in% input$Score){
+      score_1 <- 1
+    }
+    if("+2" %in% input$Score){
+      score_2 <- 2
+    }
+    if("+3" %in% input$Score){
+      score_3 <- 3
+    }
+    if("+4" %in% input$Score){
+      score_4 <- 4
+    }
+    if("+5" %in% input$Score){
+      score_5 <- 5
+    }
+    
+    
+    pitch_clean <- pitch %>%
+      select(inning, First, Second, Third, Pitch_Type, pitcher, total_score) %>%
+      mutate(pitch_type = as.character(Pitch_Type)) %>%
+      select(-Pitch_Type)
+    
+    if(thisPitcher == "All Pitchers"){
+      data1 <- filter(pitch_clean,
+                      First == Runner_First & Second == Runner_Second & Third == Runner_Third,
+                      total_score == score__5 | total_score == score__4 |
+                        total_score == score__3 | total_score == score__2 |
+                        total_score == score__1 | total_score == score_0 |
+                        total_score == score_1 | total_score == score_2 |
+                        total_score == score_3 | total_score == score_4 | total_score == score_5) %>%
+        group_by(pitch_type) %>%
+        count(pitch_type) %>%
+        filter(!is.na(pitch_type))
+    } else {
+      data1 <- filter(pitch_clean, pitcher == thisPitcher,
+                      First == Runner_First & Second == Runner_Second & Third == Runner_Third,
+                      total_score == score__5 | total_score == score__4 |
+                        total_score == score__3 | total_score == score__2 |
+                        total_score == score__1 | total_score == score_0 |
+                        total_score == score_1 | total_score == score_2 |
+                        total_score == score_3 | total_score == score_4 | total_score == score_5) %>%
+        group_by(pitch_type) %>%
+        count(pitch_type) %>%
+        filter(!is.na(pitch_type))
+    }
+    
+    
+    
+    if(nrow(data1) < 1){
+      new <- data.frame('pitch_type'='1', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='2', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='3', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='4', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"),]
+    }
+    else if(nrow(data1) < 2){
+      new <- data.frame('pitch_type'='2', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='3', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='4', "n" = 0)
+      data1 <- rbind(data1, new)
+      data1[order("pitch_type"),]
+    }
+    else if(nrow(data1) < 3){
+      if(data1[2,1] == 2){
+        new <- data.frame('pitch_type'='3', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='4', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      } else if (data1[2,1] == 3){
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='4', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      } else {
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='3', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      }
+      
+    }
+    else if(nrow(data1) < 4){
+      if(data1[2,1] == 2){
+        if(data1[3,1] == 3){
+          new <- data.frame('pitch_type'='4', "n" = 0)
+          data1 <- rbind(data1, new)
+          data1[order("pitch_type"),]
+        } else {
+          new <- data.frame('pitch_type'='3', "n" = 0)
+          data1 <- rbind(data1, new)
+          data1[order("pitch_type"), ]
+        }
+      }
+      else if(data1[2,1] == 3){
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data1 <- rbind(data1, new)
+        data1[order("pitch_type"),]
+      }
+    }
+    data1[order("pitch_type"),]
+    
+    ggplot(data1, aes(x = pitch_type, y = n, fill = pitch_type)) + 
+      geom_bar(stat = "identity") + geom_text(aes(label=n), size = 3,
+                                              position = position_stack(vjust = .5)) + ggtitle("Distribution of Situational Pitch Types") + xlab("Type of Pitch") + ylab("Frequency of Type")
+    
+  })
+  
+  output$comparePlot <- renderPlot({
+    thisPitcher <- input$Pitcher4
+    
+    pitch_clean <- pitch %>%
+      select(inning, First, Second, Third, Pitch_Type, pitcher) %>%
+      mutate(pitch_type = as.character(Pitch_Type)) %>%
+      select(-Pitch_Type)
+    
+    if(thisPitcher == "All Pitchers"){
+      data2 <- filter(pitch_clean) %>%
+        group_by(pitch_type) %>%
+        count(pitch_type) %>%
+        filter(!is.na(pitch_type))
+    } else {
+      data2 <- filter(pitch_clean, pitcher == thisPitcher) %>%
+        group_by(pitch_type) %>%
+        count(pitch_type) %>%
+        filter(!is.na(pitch_type))
+    }
+    
+    
+    if(nrow(data2) < 1){
+      new <- data.frame('pitch_type'='1', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='2', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='3', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='4', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"),]
+    }
+    else if(nrow(data2) < 2){
+      new <- data.frame('pitch_type'='2', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='3', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"), ]
+      new <- data.frame('pitch_type'='4', "n" = 0)
+      data2 <- rbind(data2, new)
+      data2[order("pitch_type"),]
+    }
+    else if(nrow(data2) < 3){
+      if(data2[2,1] == 2){
+        new <- data.frame('pitch_type'='3', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='4', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"),]
+      } else if (data2[2,1] == 3){
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='4', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"),]
+      } else {
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"), ]
+        new <- data.frame('pitch_type'='3', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"),]
+      }
+      
+    }
+    else if(nrow(data2) < 4){
+      if(data2[2,1] == 2){
+        if(data2[3,1] == 3){
+          new <- data.frame('pitch_type'='4', "n" = 0)
+          data2 <- rbind(data2, new)
+          data2[order("pitch_type"),]
+        } else {
+          new <- data.frame('pitch_type'='3', "n" = 0)
+          data2 <- rbind(data2, new)
+          data2[order("pitch_type"), ]
+        }
+      }
+      else if(data2[2,1] == 3){
+        new <- data.frame('pitch_type'='2', "n" = 0)
+        data2 <- rbind(data2, new)
+        data2[order("pitch_type"),]
+      }
+    }
+    data2[order("pitch_type")]
+    
+    ggplot(data2, aes(x = pitch_type, y = n, fill = pitch_type)) + 
+      geom_bar(stat = "identity") + geom_text(aes(label=n), size = 3,
+                                              position = position_stack(vjust = .5)) + ggtitle("Distribution of Total Pitch Types") + xlab("Type of Pitch") + ylab("Frequency of Type")
+  })
+  
+  output$selected_rows <- renderPlot({
+    thisPitcher <- input$Pitcher4
+    Runner_First <- 0
+    Runner_Second <- 0
+    Runner_Third <- 0
+    
+    score__5 <- 6
+    score__4 <- 6
+    score__3 <- 6
+    score__2 <- 6
+    score__1 <- 6
+    score_0 <- 6
+    score_1 <- 6
+    score_2 <- 6
+    score_3 <- 6
+    score_4 <- 6
+    score_5 <- 6
+    
+    
+    
+    if("Runner on First" %in% input$Base){
+      Runner_First <- 1
+    }
+    if("Runner on Second" %in% input$Base){
+      Runner_Second <- 1
+    }
+    if("Runner on Third" %in% input$Base){
+      Runner_Third <- 1
+    }
+    
+    if("-5" %in% input$Score){
+      score__5 <- -5
+    }
+    if("-4" %in% input$Score){
+      score__4 <- -4
+    }
+    if("-3" %in% input$Score){
+      score__3 <- -3
+    }
+    if("-2" %in% input$Score){
+      score__2 <- -2
+    }
+    if("-1" %in% input$Score){
+      score__1 <- -1
+    }
+    if("0" %in% input$Score){
+      score_0 <- 0
+    }
+    if("+1" %in% input$Score){
+      score_1 <- 1
+    }
+    if("+2" %in% input$Score){
+      score_2 <- 2
+    }
+    if("+3" %in% input$Score){
+      score_3 <- 3
+    }
+    if("+4" %in% input$Score){
+      score_4 <- 4
+    }
+    if("+5" %in% input$Score){
+      score_5 <- 5
+    }
+    
+    
+    if (is.null(input$bar1_click$x)) return(ggplot() + theme_void() + ggtitle("Click Bar Above for Distribution of Outcomes"))
+    else {
+      click1 <- as.character(round(input$bar1_click$x))
+      pitch_clean <- pitch %>%
+        select(inning, First, Second, Third, Pitch_Type, pitcher, total_score, Simple_Outcomes) %>%
+        mutate(pitch_type = as.character(Pitch_Type)) %>%
+        select(-Pitch_Type)
+      
+      if(thisPitcher == "All Pitchers"){
+        data3 <- filter(pitch_clean,
+                        First == Runner_First & Second == Runner_Second & Third == Runner_Third,
+                        pitch_type == click1,
+                        total_score == score__5 | total_score == score__4 |
+                          total_score == score__3 | total_score == score__2 |
+                          total_score == score__1 | total_score == score_0 |
+                          total_score == score_1 | total_score == score_2 |
+                          total_score == score_3 | total_score == score_4 | total_score == score_5) %>%
+          group_by(Simple_Outcomes) %>%
+          count(Simple_Outcomes)
+      } else {
+        data3 <- filter(pitch_clean, pitcher == thisPitcher,
+                        First == Runner_First & Second == Runner_Second & Third == Runner_Third,
+                        pitch_type == click1,
+                        total_score == score__5 | total_score == score__4 |
+                          total_score == score__3 | total_score == score__2 |
+                          total_score == score__1 | total_score == score_0 |
+                          total_score == score_1 | total_score == score_2 |
+                          total_score == score_3 | total_score == score_4 | total_score == score_5) %>%
+          group_by(Simple_Outcomes) %>%
+          count(Simple_Outcomes)
+      }
+      
+      ggplot(data3, aes(x = Simple_Outcomes, y = n, fill = Simple_Outcomes)) + 
+        geom_bar(stat = "identity") + geom_text(aes(label=n), size = 3,
+                                                position = position_stack(vjust = .5)) + ggtitle(paste("Distribution of Outcomes for", thisPitcher,
+                                                                                                       "Throwing Pitch Type", click1, "with Set Score",
+                                                                                                       "Differential and Base Runners")) + xlab("Outcome") + ylab("Frequency of Outcomes")
+    }
+  })
+  
+  output$pitchFatiguePlot <- renderPlot({
+    thisPitcher <- input$Pitcher5
+    type <- input$Pitch1c
+    
+    example1 <- pitch %>% select(pitcher, Pitch_Type, Velocity, pitch_game_num, Simple_Outcomes)
+    example2 <- filter(example1, pitcher == thisPitcher, Pitch_Type == type)
+    example3 <- example2 %>% group_by(pitch_game_num)
+    example4 <- example3 %>% summarise(Velocity = mean(Velocity))
+    ggplot(example4, aes(x=pitch_game_num, y=Velocity)) + geom_point() + geom_smooth() + ylab("Average Velocity") + xlab("Pitch Count in Game")
+  })
+  
+  output$infoBox <- renderInfoBox({
+    thisPitcher <- input$Pitcher5
+    
+    example1 <- pitch %>% select(pitcher, Pitch_Type, Velocity, pitch_game_num, Simple_Outcomes)
+    example2 <- filter(example1, pitcher == thisPitcher, Velocity > 0)
+    pitch_totals <- c()
+    j <- 1
+    for (i in 2:nrow(example2)) {
+      if(example2$pitch_game_num[i] == 1){
+        pitch_totals[j] <- example2$pitch_game_num[i-1]
+        j <- j+1
+      }
+    }
+    
+    total <- 0
+    for (i in 1:length(pitch_totals)) {
+      total <- total + pitch_totals[i]
+    }
+    
+    avg <- total / length(pitch_totals)
+    
+    infoBox("", paste0(round(avg, 0)))
+    
+  })
+  
+  output$output1 <- renderText({
+    "Average # of Pitches Thrown"
+  })
+  
+}
+
+# The shinyApp command launches the app
+shinyApp(ui, server)
