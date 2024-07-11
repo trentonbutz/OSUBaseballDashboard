@@ -1,0 +1,98 @@
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readxl)
+
+pitch <- read_excel('PitchByPitchData.xlsx',
+                    col_types = c("guess", "text", "guess", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess", "guess", "guess", "guess", 
+                                  "guess", "guess", "text", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess", "guess", "guess", "guess", 
+                                  "guess", "guess", "guess"))
+
+# Defining the User Interface
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      # Choosing pitcher
+      selectInput(inputId = "Pitcher",
+                  label = "Pitcher:",
+                  choices = c("Brock", "Burhenn", "G. Smith", 
+                              "Gahm", "Hammerberg", "Loncar", 
+                              "Lonsway", "Magno", "Milheim", 
+                              "Murphy", "Pfennig", "Root",
+                              "Smith", "Vance", "Waning"),
+                  selected = "Lonsway"),
+      selectInput(inputId = "Pitch1",
+                  label = "Pitch 1:",
+                  choices = c("Fastball" = 1, 
+                              "Curveball" = 2,
+                              "Slider" = 3, 
+                              "Changeup" = 4),
+                  selected = "Fastball"),
+    ),
+    # Output is a barplot
+    mainPanel(plotOutput(outputId = "bar"))
+  )
+)
+
+# Telling R what kind of plot to make
+server <- function(input, output, session){
+  output$bar <- renderPlot({
+    
+    thisPitcher <- input$Pitcher
+    df <- pitch %>% 
+      filter(pitcher == thisPitcher) %>%
+      select(pitcher, Pitch_Type, Prior_Pitch_Type)
+      
+    fastball <- 0
+    curveball <- 0
+    slider <- 0
+    changeup <- 0
+    
+    for(i in 2:length(df$pitcher)){
+      # checking for NAs
+      if((is.na(df$Prior_Pitch_Type[i]) == FALSE) && 
+         (is.na(df$Pitch_Type[i]) == FALSE)){
+        # if the previous pitch was the one chosen
+        if(df$Pitch_Type[i-1] == input$Pitch1) {
+          # all second pitches that are fastballs
+          if(df$Pitch_Type[i] == 1) {
+            fastball <- fastball + 1
+          }
+          # all second pitches which are curveballs
+          if(df$Pitch_Type[i] == 2) {
+            curveball <- curveball + 1
+          }
+          # all second pitches which are sliders 
+          if(df$Pitch_Type[i] == 3) {
+            slider <- slider + 1
+          }
+          # all second pitches which are changeups
+          if(df$Pitch_Type[i] == 4) {
+            changeup <- changeup + 1
+          }
+        }
+      }
+    }
+    sequencing <- data.frame("Pitch" = c("Fastball",
+              "Curveball", "Slider", "Changeup"),
+              "Counts" = c(fastball, curveball, slider, changeup))
+    
+    ggplot(sequencing, aes(x = Pitch, y = Counts, fill = Pitch)) + 
+      scale_x_discrete(limits = c("Fastball", "Curveball", 
+                                  "Slider", "Changeup")) +
+      geom_col() + 
+      geom_text(aes(label = Counts), vjust = -0.2, size = 3) + 
+      theme(legend.position = "none") +
+      labs(title = paste("Distribution of pitches thrown after a", 
+                        if(input$Pitch1 == 1){"fastball"},
+                        if(input$Pitch1 == 2){"curveball"},
+                        if(input$Pitch1 == 3){"slider"},
+                        if(input$Pitch1 == 4){"changeup"}), sep = "")
+      
+  })
+}
+
+shinyApp(ui = ui, server = server)
