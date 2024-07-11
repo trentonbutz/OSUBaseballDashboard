@@ -1,0 +1,41 @@
+---
+title: "Summary Stats"
+author: "Trenton Butz"
+date: "3/31/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+
+```{r}
+library(readxl)
+library(dplyr)
+data <- read_excel("~/R/OSUbaseball/20220330-NickSwisherField-1_unverified.xlsx")
+```
+
+Who threw the fastest ball of the night? 
+
+```{r}
+data %>% 
+  filter(PitcherTeam == "OSU_BUC") %>% 
+  arrange(desc(RelSpeed)) %>% 
+  select(Pitcher, RelSpeed) %>% 
+  head(n = 1)
+```
+
+Tim Baird thew a 95MPH heater.
+
+Whose slider generated the highest spin rate on average? 
+
+```{r}
+data %>% 
+  filter(PitcherTeam == "OSU_BUC", TaggedPitchType == "Slider") %>% 
+  group_by(Pitcher) %>% 
+  summarize(mean_spin_rate = mean(SpinRate)) %>% 
+  arrange(desc(mean_spin_rate))
+```
