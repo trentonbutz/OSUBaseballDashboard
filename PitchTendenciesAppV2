@@ -1,0 +1,139 @@
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readxl)
+
+pitch <- read_excel('PitchByPitchData.xlsx',
+      col_types = c("guess", "text", "guess", "guess", "guess", "guess", 
+            "guess", "guess", "guess", "guess", "guess", "guess", 
+            "guess", "guess", "guess", "guess", "guess", "guess", 
+            "guess", "guess", "text", "guess", "guess", "guess", 
+            "guess", "guess", "guess", "guess", "guess", "guess", 
+            "guess", "guess", "guess"))
+
+# Defining the User Interface
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      # Choosing pitcher
+      selectInput(inputId = "Pitcher",
+                  label = "Pitcher:",
+                  choices = c("Brock", "Burhenn", "G. Smith", 
+                              "Gahm", "Hammerberg", "Loncar", 
+                              "Lonsway", "Magno", "Milheim", 
+                              "Murphy", "Pfennig", "Root",
+                              "Smith", "Vance", "Waning"),
+                  selected = "Lonsway"),
+      # Choosing count - choose as many as you want
+      checkboxGroupInput(inputId = "Count",
+                         label = "Count",
+                         choices = c("0-0", "0-1", "0-2",
+                         "1-0", "1-1", "1-2", 
+                         "2-0", "2-1", "2-2",
+                         "3-0", "3-1", "3-2"),
+                         selected = "0-0"),
+    ),
+    # Output is a barplot 
+    mainPanel(plotOutput(outputId = "bar"))
+  )
+)
+
+# Telling R what kind of plot to make
+server <- function(input, output, session){
+  
+  output$bar <- renderPlot({
+    thisPitcher <- input$Pitcher
+    count_0_0 <- 1
+    count_0_1 <- 1
+    count_0_2 <- 1
+    count_1_0 <- 1
+    count_1_1 <- 1
+    count_1_2 <- 1
+    count_2_0 <- 1
+    count_2_1 <- 1
+    count_2_2 <- 1
+    count_3_0 <- 1
+    count_3_1 <- 1
+    count_3_2 <- 1
+    
+    # Selected is a variable that will help determine an
+    # appropriate upper limit for the bar graph
+    selected <- 0
+    
+    if("0-0" %in% input$Count){
+      count_0_0 <- "0-0"
+      selected <- selected + 1
+    }
+    if("0-1" %in% input$Count){
+      count_0_1 <- "0-1"
+      selected <- selected + 1
+    }
+    if("0-2" %in% input$Count){
+      count_0_2 <- "0-2"
+      selected <- selected + 1
+    }
+    if("1-0" %in% input$Count){
+      count_1_0 <- "1-0"
+      selected <- selected + 1
+    }
+    if("1-1" %in% input$Count){
+      count_1_1 <- "1-1"
+      selected <- selected + 1
+    }
+    if("1-2" %in% input$Count){
+      count_1_2 <- "1-2"
+      selected <- selected + 1
+    }
+    if("2-0" %in% input$Count){
+      count_2_0 <- "2-0"
+      selected <- selected + 1
+    }
+    if("2-1" %in% input$Count){
+      count_2_1 <- "2-1"
+      selected <- selected + 1
+    }
+    if("2-2" %in% input$Count){
+      count_2_2 <- "2-2"
+      selected <- selected + 1
+    }
+    if("3-0" %in% input$Count){
+      count_3_0 <- "3-0"
+      selected <- selected + 1
+    }
+    if("3-1" %in% input$Count){
+      count_3_1 <- "3-1"
+      selected <- selected + 1
+    }
+    if("3-2" %in% input$Count){
+      count_3_2 <- "3-2"
+      selected <- selected + 1
+    }
+    
+    pitch_clean <- pitch %>%
+      select(inning, balls, strikes, Pitch_Type, pitcher) %>%
+      mutate(count = paste(balls, "-", strikes, 
+                           sep = "")) %>% 
+      mutate(pitch_type = as.character(Pitch_Type)) %>%
+      select(-Pitch_Type)
+    
+    data <- filter(pitch_clean, pitcher == thisPitcher,  
+                  count == count_0_0 | count == count_0_1 |
+                  count == count_0_2 | count == count_1_0 |
+                  count == count_1_1 | count == count_1_2 | 
+                  count == count_2_0 | count == count_2_1 |
+                  count == count_2_2 | count == count_3_0 |
+                  count == count_3_1 | count == count_3_2) %>%
+      group_by(pitch_type) %>%
+      count(count) %>%
+      filter(!is.na(pitch_type))
+    
+    ggplot(data, aes(x = pitch_type, y = n, fill = count)) + 
+      geom_col() + 
+      geom_text(aes(label = n), size = 3,
+                position = position_stack(vjust = .5)) +
+      labs(title = paste("Distribution of ", selected, " Pitch(es) by", thisPitcher), 
+          y = "Number of Pitches", x = "Pitch Type") 
+  })
+}
+# Generating the Shiny app
+shinyApp(ui = ui, server = server)
