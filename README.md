@@ -14,3 +14,5 @@ The data for this project is pitch-by-pitch data recorded manually during the 20
 **Base Running/Score Differential**: This visualization shows pitch tendencies within the context of a real game scenario. Based on the score differential of the game and the location of any runners on the base paths, the pitcher's strategy must change. Adding this context enables the user to increase the depth of their data-driven strategy decisions in relation to which pitch should be thrown. 
 
 **Pitching fatigue**: This visualization shows how the the average velocity for each pitch in one outing changes as the outing progresses. Predictably, the average velocity does trend downward as the pitcher fatigures, but this does not happen uniformly across all pitches, or across all pitchers. 
+
+You can find a link to the dashboard in the ShinyDashboard file. The DashboardCode file is the most extensive and heavily-commented code source for generating the dashboard. Other miscellaneous files were used to create some of the individual apps and perform Exploratory Data Analysis.
