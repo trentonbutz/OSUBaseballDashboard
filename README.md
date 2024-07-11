@@ -1,5 +1,5 @@
 # OSUBaseballDashboard
-A dashboard created as part of the analysis completed for the Ohio State University varsity baseball team, hosted here: [https://tbutz.shinyapps.io/OSUBaseballDashboard/](url)
+A dashboard created as part of the analysis completed for the Ohio State University varsity baseball team
 
 In 2022, I worked with several other individuals to perform an in-depth analysis for the OSU baseball team. I worked closely with the pitching coaches on the team, who were interested in learning about how pitch sequencing could affect game outcomes. Initially, the coaches relied on conventional wisdom, their own expertise, and the expertise of the players to determine which pitch might be the right one to throw in a given scenario. By consuming the reslts of this analysis, the coaches were able to begin making data-driven decisions throughout each game about what pitch should be thrown.
 
